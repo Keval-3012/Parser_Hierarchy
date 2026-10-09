@@ -8,9 +8,10 @@ using System.Text.RegularExpressions;
 /// Input pattern:   [legal text] / [Scope] / [Category]
 ///   e.g. "1. IFSC Act, 2019 2. Circular F. No. IFSCA-LPRA/3/2024, dt. 02.12.24/ Central/ Corporate Secretarial"
 ///
-/// Rule: the SECTION separator is a slash followed by whitespace ("/ ").
-/// Slashes without a space (IFSCA-LPRA/3/2024, Data Privacy/Information Technology)
-/// are part of the text and are NOT split.
+/// Rule: the SECTION separator is a slash followed by whitespace ("/ "), with NO space before the slash.
+/// These slashes are part of the text and are NOT split:
+///   - no space after  : IFSCA-LPRA/3/2024, Data Privacy/Information Technology
+///   - space before it : Internal - Agreement / Deed   (" / ")
 ///
 /// From the end:   last section = Category,  second-last = Scope,  everything before = legal levels.
 /// Works with C# 4+/.NET Framework 4.x (classic ASP.NET WebForms).
@@ -33,8 +34,13 @@ public class HierarchyResult
 
 public static class HierarchyParser
 {
-    // Section separator: "/" followed by at least one whitespace char.
-    private static readonly Regex SectionSplit = new Regex(@"/\s+", RegexOptions.Compiled);
+    // Section separator: "/" followed by at least one whitespace char (unchanged rule),
+    // AND (new condition) the slash must be attached to the previous word, i.e. NOT preceded by a space.
+    //   "Concession Agreement/ Central/ Internal - Agreement / Deed"
+    //        separator ->    ^^          ^^        (slash right after a word, space after)
+    //        NOT a separator:                                  ^^^  " / " has a space BEFORE the slash,
+    //                                                               so "Agreement / Deed" stays in one category.
+    private static readonly Regex SectionSplit = new Regex(@"(?<=\S)/\s+", RegexOptions.Compiled);
 
     // Numbering of legal levels: "1. ", "2. " (must be at start or after whitespace).
     private static readonly Regex LevelSplit = new Regex(@"(?<!\S)\d+\.\s+", RegexOptions.Compiled);
